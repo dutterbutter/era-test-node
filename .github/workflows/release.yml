@@ -5,9 +5,9 @@
 name: release
 
 on:
- push:
-    tags:
-      - v*
+ pull_request:
+  branches:
+   - main
 
 env:
   REPO_NAME: ${{ github.repository_owner }}/era-test-node
@@ -30,9 +30,11 @@ jobs:
       matrix:
         # TODO: fix and add aarch64-unknown-linux-gnu target
         # See: https://github.com/matter-labs/era-test-node/issues/56
-        arch: [x86_64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
+        arch: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
         include:
           -   arch: x86_64-unknown-linux-gnu
+              platform: ubuntu-20.04
+          -   arch: aarch64-unknown-linux-gnu
               platform: ubuntu-20.04
           -   arch: x86_64-apple-darwin
               platform: macos-latest
