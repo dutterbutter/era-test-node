@@ -2,7 +2,7 @@
 name: Deploy static content to Pages
 
 on:
-  push:
+  pull_request:
     branches: ["main"]
 
   # Allows you to run this workflow manually from the Actions tab
@@ -38,7 +38,7 @@ jobs:
         uses: actions/configure-pages@v3
 
       - name: Install mdbook
-        run: cargo +nightly install mdbook
+        run: cargo install mdbook
       - name: Generate rust docs
         run: |
           echo "Generating docs..."
