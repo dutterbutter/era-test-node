@@ -65,7 +65,12 @@ jobs:
 
       - name: Build era-test-node for ${{ matrix.arch }}
         run: |
-          make build-${{ matrix.arch }}
+          if [ "${{ matrix.arch }}" = "x86_64-apple-darwin" ]; then
+            cargo build --bin era_test_node --target x86_64-apple-darwin --release
+          else
+            make build-${{ matrix.arch }}
+          fi
+        
     
       - name: Rename and move binary
         run: |      
