@@ -59,7 +59,7 @@ jobs:
         with:
           toolchain: nightly-2024-08-01
       - name: Install target
-        run: rustup target add ${{ matrix.arch }}
+        run: rustup target add ${{ matrix.arch }} --toolchain nightly-2024-08-01
 
       - name: Run cargo clean
         run: cargo clean
