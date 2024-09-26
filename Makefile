@@ -26,6 +26,10 @@ rust-build:
 run: all
 	./target/release/era_test_node run
 
+# Build for the native x86_64-unknown-linux-gnu target without cross
+build-x86_64-unknown-linux-gnu:
+    cargo build --bin era_test_node --release
+
 # Build the Rust project for a specific target. Primarily used for CI.
 build-%:
 	cross build --bin era_test_node --target $* --release
