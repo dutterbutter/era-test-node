@@ -33,7 +33,7 @@ jobs:
           -   arch: x86_64-unknown-linux-gnu
               platform: ubuntu-20.04
           -   arch: aarch64-unknown-linux-gnu
-              platform: ubuntu-22.04
+              platform: ubuntu-20.04
           -   arch: x86_64-apple-darwin
               platform: macos-latest
           -   arch: aarch64-apple-darwin
