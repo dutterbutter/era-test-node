@@ -52,7 +52,7 @@ jobs:
           toolchain: stable
 
       - name: Install cross
-        run: cargo +stable install cross
+        run: cargo +stable install cross --version 0.2.4
 
       # Install Rust nightly and add targets
       - name: Install Rust nightly
