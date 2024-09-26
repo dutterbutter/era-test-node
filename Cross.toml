@@ -8,5 +8,5 @@ pre-build = [
     "export DEBIAN_FRONTEND=noninteractive",
     "export TZ=Etc/UTC",
     "dpkg --add-architecture $CROSS_DEB_ARCH",
-    "apt update -q && apt upgrade -yq && sudo apt install aptitude && apt install --assume-yes --no-install-recommends libclang-dev clang cmake build-essential pkg-config libssl-dev:$CROSS_DEB_ARCH libsasl2-dev llvm-dev gnutls-bin"
+    "apt update -q && apt upgrade -yq && apt install --assume-yes --no-install-recommends libclang-dev clang cmake build-essential pkg-config libssl-dev:$CROSS_DEB_ARCH libsasl2-dev llvm-dev gnutls-bin"
 ]
