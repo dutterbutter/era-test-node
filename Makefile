@@ -28,7 +28,7 @@ run: all
 
 # Build the Rust project for a specific target. Primarily used for CI.
 build-%:
-	cross +nightly-2024-08-01 build --bin era_test_node --target $* --release
+	cross build --bin era_test_node --target $* --release
 
 # Build the Rust documentation
 rust-doc:

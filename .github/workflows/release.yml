@@ -44,33 +44,31 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-    
+
+      # Install Rust stable and cross
       - name: Install Rust stable
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: nightly-2024-01-01
+          toolchain: stable
 
-      - name: Install cross v0.2.4 from source
-        run: |
-          cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.4
+      - name: Install cross
+        run: cargo +stable install cross
 
-      - name: Install Rust
+      # Install Rust nightly and add targets
+      - name: Install Rust nightly
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly-2024-08-01
+
       - name: Install target
-        run: rustup target add ${{ matrix.arch }}
+        run: rustup target add ${{ matrix.arch }} --toolchain nightly-2024-08-01
 
       - name: Run cargo clean
         run: cargo clean
 
-      # ==============================
-      #       Builds
-      # ==============================
-
+      # Build step using cross
       - name: Build era-test-node for ${{ matrix.arch }}
-        run: |
-          make build-${{ matrix.arch }}
+        run: make build-${{ matrix.arch }}
     
       - name: Rename and move binary
         run: |      
