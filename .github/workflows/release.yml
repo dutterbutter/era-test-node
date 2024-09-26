@@ -69,11 +69,7 @@ jobs:
       # Build step using cross
       - name: Build era-test-node for ${{ matrix.arch }}
         run: |
-          if [ "${{ matrix.arch }}" = "x86_64-unknown-linux-gnu" ]; then
-              cargo build --bin era_test_node --release
-          else
-              make build-${{ matrix.arch }}
-          fi    
+          make build-${{ matrix.arch }}
     
       - name: Rename and move binary
         run: |      
