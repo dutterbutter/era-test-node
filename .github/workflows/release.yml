@@ -50,8 +50,9 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install cross
-        run: cargo +stable install cross --tag v0.2.4
+      - name: Install cross v0.2.4 from source
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.4
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
