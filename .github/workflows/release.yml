@@ -70,7 +70,7 @@ jobs:
       - name: Build era-test-node for ${{ matrix.arch }}
         run: |
           if [ "${{ matrix.arch }}" = "x86_64-unknown-linux-gnu" ]; then
-              make build-x86_64-unknown-linux-gnu
+              cargo build --bin era_test_node --release
           else
               make build-${{ matrix.arch }}
           fi    
