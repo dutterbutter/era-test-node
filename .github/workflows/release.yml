@@ -51,7 +51,7 @@ jobs:
           toolchain: stable
 
       - name: Install cross
-        run: cargo +stable install cross
+        run: cargo +stable install cross --tag v0.2.4
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
