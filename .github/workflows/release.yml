@@ -31,6 +31,7 @@ jobs:
           - arch: aarch64-unknown-linux-gnu
             platform: ubuntu-20.04
             cc: aarch64-linux-gnu-gcc
+            openssl_target: linux-aarch64
           - arch: x86_64-apple-darwin
             platform: macos-latest
             cc: clang
@@ -57,7 +58,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang
+          sudo apt-get install -y clang pkg-config
           if [ "${{ matrix.arch }}" == "aarch64-unknown-linux-gnu" ]; then
             sudo apt-get install -y gcc-aarch64-linux-gnu
           fi
@@ -78,6 +79,7 @@ jobs:
       - name: Build era-test-node for ${{ matrix.arch }}
         env:
           CC: ${{ matrix.cc }}
+          OPENSSL_TARGET: ${{ matrix.openssl_target }}
         run: |
           cargo build --bin era_test_node --target ${{ matrix.arch }} --release
 
