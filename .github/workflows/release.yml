@@ -24,16 +24,19 @@ jobs:
     name: build release
     strategy:
       matrix:
-        arch: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
         include:
           - arch: x86_64-unknown-linux-gnu
             platform: ubuntu-20.04
+            cc: clang
           - arch: aarch64-unknown-linux-gnu
             platform: ubuntu-20.04
+            cc: aarch64-linux-gnu-gcc
           - arch: x86_64-apple-darwin
             platform: macos-latest
+            cc: clang
           - arch: aarch64-apple-darwin
             platform: macos-latest
+            cc: clang
 
     runs-on: ${{ matrix.platform }}
     needs: [extract-version]
@@ -49,9 +52,15 @@ jobs:
       - name: Install target
         run: rustup target add ${{ matrix.arch }} --toolchain nightly-2024-08-01
 
-      - name: Install linker for aarch64-unknown-linux-gnu
-        if: matrix.arch == 'aarch64-unknown-linux-gnu' && runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+      # Install dependencies based on target architecture
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+          if [ "${{ matrix.arch }}" == "aarch64-unknown-linux-gnu" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
 
       - name: Install linker for aarch64-apple-darwin
         if: matrix.arch == 'aarch64-apple-darwin' && runner.os == 'macOS'
@@ -63,16 +72,12 @@ jobs:
           echo "[target.aarch64-apple-darwin]" >> ~/.cargo/config
           echo 'linker = "clang"' >> ~/.cargo/config
 
-      - name: Install Clang
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y clang
-
       - name: Run cargo clean
         run: cargo clean
 
       - name: Build era-test-node for ${{ matrix.arch }}
         env:
-          CC: clang
+          CC: ${{ matrix.cc }}
         run: |
           cargo build --bin era_test_node --target ${{ matrix.arch }} --release
 
