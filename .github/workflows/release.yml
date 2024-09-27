@@ -32,9 +32,9 @@ jobs:
         arch: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
         include:
           -   arch: x86_64-unknown-linux-gnu
-              platform: ubuntu-20.04
+              platform: buildjet-32vcpu-ubuntu-2004
           -   arch: aarch64-unknown-linux-gnu
-              platform: ubuntu-20.04
+              platform: buildjet-32vcpu-ubuntu-2004-arm
           -   arch: x86_64-apple-darwin
               platform: macos-latest
           -   arch: aarch64-apple-darwin
@@ -60,11 +60,11 @@ jobs:
       #       Builds
       # ==============================
 
-      - name: Install cross v0.2.5 from source
+      - name: Install cross v0.2.4 from source
         env:
           RUSTFLAGS: ""
         run: |
-          cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5
+          cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.4
 
       - name: Build era-test-node for ${{ matrix.arch }}
         run: |
