@@ -63,10 +63,16 @@ jobs:
           echo "[target.aarch64-apple-darwin]" >> ~/.cargo/config
           echo 'linker = "clang"' >> ~/.cargo/config
 
+      - name: Install Clang
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang
+
       - name: Run cargo clean
         run: cargo clean
 
       - name: Build era-test-node for ${{ matrix.arch }}
+        env:
+          CC: clang
         run: |
           cargo build --bin era_test_node --target ${{ matrix.arch }} --release
 
