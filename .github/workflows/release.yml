@@ -1,7 +1,11 @@
+# This workflow is borrowed from reth, which is borrowed from Lighthouse: 
+# reth: https://github.com/paradigmxyz/reth/blob/500b0fac135fe07635d871d64467326599e2b27e/.github/workflows/release.yml
+# lighthouse: https://github.com/sigp/lighthouse/blob/693886b94176faa4cb450f024696cb69cda2fe58/.github/workflows/release.yml
+
 name: release
 
 on:
-  push:
+ push:
     tags:
       - v*
 
@@ -11,185 +15,162 @@ env:
 
 jobs:
   extract-version:
-    name: Extract Version
+    name: extract version
     runs-on: ubuntu-latest
     steps:
       - name: Extract version
+        run: echo "VERSION=$(echo ${GITHUB_REF#refs/tags/})" >> $GITHUB_OUTPUT
         id: extract_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
     outputs:
       VERSION: ${{ steps.extract_version.outputs.VERSION }}
 
   build:
-    name: Build Release
-    runs-on: ${{ matrix.platform }}
-    needs: [extract-version]
+    name: build release
     strategy:
       matrix:
+        arch: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
         include:
-          - arch: x86_64-unknown-linux-gnu
-            platform: ubuntu-20.04
-            cc: clang
-            ar: ar
-            ranlib: ranlib
-            linker: clang
-            openssl_target: linux-x86_64
-          - arch: aarch64-unknown-linux-gnu
-            platform: ubuntu-20.04
-            cc: aarch64-linux-gnu-gcc
-            ar: aarch64-linux-gnu-ar
-            ranlib: aarch64-linux-gnu-ranlib
-            linker: aarch64-linux-gnu-gcc
-            openssl_target: linux-aarch64
-          - arch: x86_64-apple-darwin
-            platform: macos-latest
-            cc: clang
-            ar: ar
-            ranlib: ranlib
-            linker: clang
-            openssl_target: darwin64-x86_64-cc
-          - arch: aarch64-apple-darwin
-            platform: macos-latest
-            cc: clang
-            ar: ar
-            ranlib: ranlib
-            linker: clang
-            openssl_target: darwin64-arm64-cc
+          -   arch: x86_64-unknown-linux-gnu
+              platform: ubuntu-20.04
+          -   arch: aarch64-unknown-linux-gnu
+              platform: ubuntu-20.04
+          -   arch: x86_64-apple-darwin
+              platform: macos-latest
+          -   arch: aarch64-apple-darwin
+              platform: macos-latest
 
+    runs-on: ${{ matrix.platform }}
+    needs: [extract-version]
     steps:
-      - name: Checkout Sources
+      - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install Rust Nightly
+      - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly-2024-08-01
+      - name: Install target
+        run: rustup target add ${{ matrix.arch }}
 
-      - name: Install Target
-        run: rustup target add ${{ matrix.arch }} --toolchain nightly-2024-08-01
-
-      - name: Install Dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang pkg-config
-          if [ "${{ matrix.arch }}" == "aarch64-unknown-linux-gnu" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
-          fi
-
-      - name: Install Linker for aarch64-apple-darwin
-        if: matrix.arch == 'aarch64-apple-darwin' && runner.os == 'macOS'
-        run: |
-          sudo softwareupdate --install-rosetta --agree-to-license || true
-          rustup target add aarch64-apple-darwin
-          export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
-          export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
-          echo "[target.aarch64-apple-darwin]" >> ~/.cargo/config
-          echo 'linker = "clang"' >> ~/.cargo/config
-
-      - name: Set Up Environment Variables for Cross-Compilation
-        run: |
-          echo "Setting up environment variables for ${{ matrix.arch }}"
-
-      - name: Run Cargo Clean
+      - name: Run cargo clean
         run: cargo clean
 
+      # ==============================
+      #       Builds
+      # ==============================
+
+      - name: Install cross v0.2.5 from source
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5
+
       - name: Build era-test-node for ${{ matrix.arch }}
-        env:
-          CC: ${{ matrix.cc }}
-          AR: ${{ matrix.ar }}
-          RANLIB: ${{ matrix.ranlib }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker }}
-          OPENSSL_TARGET: ${{ matrix.openssl_target }}
-          PKG_CONFIG_ALLOW_CROSS: 1
-          PKG_CONFIG_LIBDIR: /usr/aarch64-linux-gnu/lib/pkgconfig
         run: |
-          cargo build --bin era_test_node --target ${{ matrix.arch }} --release
-
-      - name: Rename and Move Binary
-        run: |
-          mkdir -p artifacts
+          make build-${{ matrix.arch }}
+    
+      - name: Rename and move binary
+        run: |      
+          mkdir artifacts
           mv target/${{ matrix.arch }}/release/era_test_node ./artifacts
-
-      - name: Create Artifacts
+      
+      - name: Create artifacts
         run: |
           cd artifacts
-          tar -czf era_test_node-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz era_test_node
-          mv era_test_node-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz ..
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+          tar -czf era_test_node-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz era_test_node*
+          mv *tar.gz* ..
+    
+        # =======================================================================
+        # Upload artifacts
+        # This is required to share artifacts between different jobs
+        # =======================================================================
+      - name:  Upload artifact
+        uses:  actions/upload-artifact@v3
         with:
           name: era_test_node-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
           path: era_test_node-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
 
   draft-release:
-    name: Draft Release
-    needs: [build, extract-version]
+    name: draft release
+    needs:  [build, extract-version]
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.extract-version.outputs.VERSION }}
+      VERSION:  ${{ needs.extract-version.outputs.VERSION }}
     permissions:
+      # Required to post the release
       contents: write
     steps:
-      - name: Checkout Sources
+      # This is necessary for generating the changelog. It has to come before "Download Artifacts" or else it deletes the artifacts.
+      - name: Checkout sources
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Download Artifacts
+      # ==============================
+      #       Download artifacts
+      # ==============================
+      - name: Download artifacts
         uses: actions/download-artifact@v3
 
-      - name: Generate Full Changelog
+      # ==============================
+      #       Create release draft
+      # ==============================
+      - name: Generate full changelog
         id: changelog
         run: |
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
           echo "$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 ${{ env.VERSION }}^)..${{ env.VERSION }})" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Generate List of Contributors
+      
+      - name: Generate list of contributors
         id: contributors
         run: |
           echo "CONTRIBUTORS<<EOF" >> $GITHUB_OUTPUT
           echo "$(git log --pretty=format:"- %aN (%aE)" $(git describe --tags --abbrev=0 ${{ env.VERSION }}^)..${{ env.VERSION }} | sort | uniq)" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create Release Draft
+        
+      - name: Create release draft
         env:
           GITHUB_USER: ${{ github.repository_owner }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        # The formatting here is borrowed from reth which borrowed it from Lighthouse (which is borrowed from OpenEthereum): https://github.com/openethereum/openethereum/blob/main/.github/workflows/build.yml
         run: |
           body=$(cat <<- "ENDBODY"
-          ## 📋 Summary
+          <!--Watch Release Notes video below 👇 
+          [![YouTube Release Notes](https://img.youtube.com/vi/FZefCZW7JJk/0.jpg)](https://www.youtube.com/watch?v=FZefCZW7JJk)-->
 
+          ## 📋 Summary
+          
           ### 🐛 Bug Fixes:
           - TBD
-
+          
           ### ✨ New Features:
           - TBD
-
+          
           ### ⚠️ Breaking Changes:
           - TBD
-
+          
           ## 📜 All Changes
+          
           ${{ steps.changelog.outputs.CHANGELOG }}
-
+          
           ## ⭐ Contributors
+          
           ${{ steps.contributors.outputs.CONTRIBUTORS }}
-
+          
           ## 📥 Binaries
-
+          
           | System | Architecture | Binary |
           |:---:|:---:|:---:|
-          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | x86_64 | [era-test-node-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/era_test_node-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz) |
-          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | aarch64 | [era-test-node-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/era_test_node-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz) |
-          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | x86_64 | [era-test-node-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/era_test_node-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz) |
+          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | x86_64 | [era-test-node-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/era_test_node-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz) | 
+          | <img src="https://simpleicons.org/icons/linux.svg" style="width: 32px;"/> | aarch64 | [era-test-node-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/era_test_node-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz) | 
+          | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | x86_64 | [era-test-node-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/era_test_node-${{ env.VERSION }}-x86_64-apple-darwin.tar.gz) | 
           | <img src="https://simpleicons.org/icons/apple.svg" style="width: 32px;"/> | aarch64 | [era-test-node-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/era_test_node-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz) |
+          | | | | 
           ENDBODY
           )
           assets=()
-          for asset in ./era_test_node-*.tar.gz; do
-              assets+=("$asset#$asset")
+          for asset in ./era_test_node-*.tar.gz*; do
+              assets+=("$asset/$asset")
           done
-          tag_name="v${{ env.VERSION }}"
+          tag_name="${{ env.VERSION }}"
           echo "$body" | gh release create "$tag_name" "${assets[@]}" --draft -F "-" -t "Release: $tag_name"
